@@ -1,0 +1,246 @@
+import * as React from 'react';
+import dayjs, { Dayjs } from 'dayjs';
+import { useRifm } from 'rifm';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import {
+  DatePicker,
+  type DatePickerProps,
+  type DatePickerFieldProps,
+} from '@mui/x-date-pickers/DatePicker';
+import {
+  useSplitFieldProps,
+  useParsedFormat,
+  usePickerContext,
+} from '@mui/x-date-pickers/hooks';
+import { useValidation, validateDate } from '@mui/x-date-pickers/validation';
+import { CalendarIcon } from '@mui/x-date-pickers/icons';
+
+const MASK_USER_INPUT_SYMBOL = '_';
+const ACCEPT_REGEX = /[\d]/gi;
+const FORMAT = 'YYYY/MM/DD';
+
+const staticDateWith2DigitTokens = dayjs('2019-11-21T11:30:00.000');
+const staticDateWith1DigitTokens = dayjs('2019-01-01T09:00:00.000');
+
+function getInputValueFromValue(value: Dayjs | null, format: string) {
+  if (value == null) {
+    return '';
+  }
+
+  return value.isValid() ? value.format(format) : '';
+}
+
+function MaskedDateField(props: DatePickerFieldProps) {
+  const { internalProps, forwardedProps } = useSplitFieldProps(props, 'date');
+  const pickerContext = usePickerContext();
+  /*
+  {
+    "value": null,
+    "timezone": "default",
+    "open": false,
+    "views": [
+        "year",
+        "day"
+    ],
+    "view": "day",
+    "initialView": "day",
+    "disabled": false,
+    "readOnly": false,
+    "autoFocus": false,
+    "variant": "desktop",
+    "orientation": "portrait",
+    "popupRef": {
+        "current": null
+    },
+    "reduceAnimations": false,
+    "triggerStatus": "enabled",
+    "hasNextStep": false,
+    "fieldFormat": "YYYY/DD/MM"
+}
+   */
+
+  const parsedFormat = useParsedFormat(); //YYYY/DD/MM
+
+  // Control the input text
+  const [inputValue, setInputValue] = React.useState<string>(() =>
+    getInputValueFromValue(pickerContext.value, pickerContext.fieldFormat),
+  ); // 초기값: ''
+
+  React.useEffect(() => {
+    // value 검증 후 setInputValue
+    if (pickerContext.value && pickerContext.value.isValid()) {
+      const newDisplayDate = getInputValueFromValue(
+        pickerContext.value,
+        pickerContext.fieldFormat!,
+      );
+      setInputValue(newDisplayDate);
+    }
+  }, [pickerContext.fieldFormat, pickerContext.value]);
+
+  React.useEffect(() => {
+  }, [pickerContext.value])
+
+  const { hasValidationError, getValidationErrorForNewValue } = useValidation({
+    value: pickerContext.value,
+    timezone: pickerContext.timezone,
+    props: internalProps,
+    validator: validateDate,
+  });
+
+  const handleInputValueChange = (newInputValue: string) => {
+    //rifmFormat으로 포맷 후에
+    //ui 렌더링 + dayjs 객체로 변환 후 컨텍스트에 저장
+    setInputValue(newInputValue);
+
+    const newValue = dayjs(newInputValue, pickerContext.fieldFormat);
+    pickerContext.setValue(newValue, {
+      validationError: getValidationErrorForNewValue(newValue),
+    });
+  };
+
+  const rifmFormat = React.useMemo(() => {
+    const inferredFormatPatternWith1Digits = staticDateWith1DigitTokens
+      .format(pickerContext.fieldFormat)
+      .replace(ACCEPT_REGEX, MASK_USER_INPUT_SYMBOL);
+
+    const inferredFormatPatternWith2Digits = staticDateWith2DigitTokens
+      .format(pickerContext.fieldFormat)
+      .replace(ACCEPT_REGEX, MASK_USER_INPUT_SYMBOL);
+
+    if (inferredFormatPatternWith1Digits !== inferredFormatPatternWith2Digits) {
+      throw new Error(
+        `Mask does not support numbers with variable length such as 'M'.`,
+      );
+    }
+
+    const maskToUse = inferredFormatPatternWith1Digits; // 예: "____/__/__"
+
+    // ✅ 마지막 입력값과 결과값을 저장할 변수
+    let lastInput: string | null = null;
+    let lastOutput: string | null = null;
+
+    return function formatMaskedDate(valueToFormat: string) {
+   /*   console.group('비교')
+      console.log(lastInput);
+      console.log(valueToFormat);
+      console.groupEnd()*/
+
+      // ✅ 같은 입력이면 캐시된 결과 반환
+      if (valueToFormat === lastInput) {
+        return lastOutput!;
+      }
+      const isAlreadyFormatted = dayjs(valueToFormat, pickerContext.fieldFormat, true).isValid();
+      if (isAlreadyFormatted || !valueToFormat) return valueToFormat;
+
+      console.log('실행')
+
+      let outputCharIndex = 0;
+
+      const formatted = valueToFormat
+        .split('')
+        .map((character, characterIndex) => {
+          ACCEPT_REGEX.lastIndex = 0;
+
+          if (outputCharIndex > maskToUse.length - 1) {
+            return '';
+          }
+
+          const maskChar = maskToUse[outputCharIndex];
+          const nextMaskChar = maskToUse[outputCharIndex + 1];
+
+          const acceptedChar = ACCEPT_REGEX.test(character) ? character : '';
+          const formattedChar =
+            maskChar === MASK_USER_INPUT_SYMBOL
+              ? acceptedChar
+              : maskChar + acceptedChar;
+
+          outputCharIndex += formattedChar.length;
+
+          const isLastCharacter = characterIndex === valueToFormat.length - 1;
+          if (
+            isLastCharacter &&
+            nextMaskChar &&
+            nextMaskChar !== MASK_USER_INPUT_SYMBOL
+          ) {
+            // when cursor at the end of mask part (e.g. month) prerender next symbol "21" -> "21/"
+            return formattedChar ? formattedChar + nextMaskChar : '';
+          }
+          return formattedChar;
+        })
+        .join('');
+
+      // ✅ 저장
+      lastInput = valueToFormat;
+      lastOutput = formatted;
+
+      return formatted;
+    };
+  }, [pickerContext.fieldFormat]);
+
+
+  const rifmProps = useRifm({
+    value: inputValue,
+    onChange: handleInputValueChange,
+    format: rifmFormat,
+  });
+
+  return (
+    <TextField
+      placeholder={parsedFormat}
+      error={hasValidationError}
+      focused={pickerContext.open}
+      name={pickerContext.name}
+      label={pickerContext.label}
+      className={pickerContext.rootClassName}
+      sx={pickerContext.rootSx}
+      ref={pickerContext.rootRef}
+      {...rifmProps}
+      {...forwardedProps}
+      slotProps={{
+        input: {
+          ref: pickerContext.triggerRef,
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                onClick={() => pickerContext.setOpen((prev) => !prev)}
+                edge="end"
+              >
+                <CalendarIcon />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }
+      }}
+    />
+  );
+}
+
+function MaskedFieldDatePicker(props: DatePickerProps) {
+  return (
+    <DatePicker slots={{ ...props.slots, field: MaskedDateField }} format={FORMAT} {...props} />
+  );
+}
+
+export function MaskedMaterialTextField() {
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <MaskedFieldDatePicker />
+    </LocalizationProvider>
+  );
+}
+
+export function MaskedMaterialTextFieldRange() {
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <div style={{display: 'flex', alignItems:'center'}}>
+        <MaskedFieldDatePicker />
+        <span>-</span>
+        <MaskedFieldDatePicker />
+      </div>
+    </LocalizationProvider>
+  )
+}
