@@ -20,7 +20,7 @@ import { useValidation, validateDate } from '@mui/x-date-pickers/validation';
 import { CalendarIcon } from '@mui/x-date-pickers/icons';
 
 const MASK_USER_INPUT_SYMBOL = '_';
-const ACCEPT_REGEX = /[\d]/gi;
+const ACCEPT_REGEX = /\d/gi;
 const FORMAT = 'YYYY/MM/DD';
 
 const staticDateWith2DigitTokens = dayjs('2019-11-21T11:30:00.000');
@@ -37,41 +37,13 @@ function getInputValueFromValue(value: Dayjs | null, format: string) {
 function MaskedDateField(props: DatePickerFieldProps) {
   const { internalProps, forwardedProps } = useSplitFieldProps(props, 'date');
   const pickerContext = usePickerContext();
-  /*
-  {
-    "value": null,
-    "timezone": "default",
-    "open": false,
-    "views": [
-        "year",
-        "day"
-    ],
-    "view": "day",
-    "initialView": "day",
-    "disabled": false,
-    "readOnly": false,
-    "autoFocus": false,
-    "variant": "desktop",
-    "orientation": "portrait",
-    "popupRef": {
-        "current": null
-    },
-    "reduceAnimations": false,
-    "triggerStatus": "enabled",
-    "hasNextStep": false,
-    "fieldFormat": "YYYY/DD/MM"
-}
-   */
+  const parsedFormat = useParsedFormat();
 
-  const parsedFormat = useParsedFormat(); //YYYY/DD/MM
-
-  // Control the input text
   const [inputValue, setInputValue] = React.useState<string>(() =>
     getInputValueFromValue(pickerContext.value, pickerContext.fieldFormat),
-  ); // 초기값: ''
+  );
 
   React.useEffect(() => {
-    // value 검증 후 setInputValue
     if (pickerContext.value && pickerContext.value.isValid()) {
       const newDisplayDate = getInputValueFromValue(
         pickerContext.value,
@@ -92,8 +64,6 @@ function MaskedDateField(props: DatePickerFieldProps) {
   });
 
   const handleInputValueChange = (newInputValue: string) => {
-    //rifmFormat으로 포맷 후에
-    //ui 렌더링 + dayjs 객체로 변환 후 컨텍스트에 저장
     setInputValue(newInputValue);
 
     const newValue = dayjs(newInputValue, pickerContext.fieldFormat);
@@ -117,26 +87,21 @@ function MaskedDateField(props: DatePickerFieldProps) {
       );
     }
 
-    const maskToUse = inferredFormatPatternWith1Digits; // 예: "____/__/__"
+    const maskToUse = inferredFormatPatternWith1Digits; // "____/__/__"
 
-    // ✅ 마지막 입력값과 결과값을 저장할 변수
+    // 마지막 입력값과 결과값을 저장할 변수
     let lastInput: string | null = null;
     let lastOutput: string | null = null;
 
     return function formatMaskedDate(valueToFormat: string) {
-   /*   console.group('비교')
-      console.log(lastInput);
-      console.log(valueToFormat);
-      console.groupEnd()*/
-
-      // ✅ 같은 입력이면 캐시된 결과 반환
+      // 같은 입력이면 저장된 결과 반환
       if (valueToFormat === lastInput) {
         return lastOutput!;
       }
+
+      // 이미 포맷되었거나 빈 값이면 그대로 반환
       const isAlreadyFormatted = dayjs(valueToFormat, pickerContext.fieldFormat, true).isValid();
       if (isAlreadyFormatted || !valueToFormat) return valueToFormat;
-
-      console.log('실행')
 
       let outputCharIndex = 0;
 
@@ -173,7 +138,7 @@ function MaskedDateField(props: DatePickerFieldProps) {
         })
         .join('');
 
-      // ✅ 저장
+      // 마지막 입력값, 결과값 저장
       lastInput = valueToFormat;
       lastOutput = formatted;
 
