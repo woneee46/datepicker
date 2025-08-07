@@ -21,7 +21,7 @@ import { CalendarIcon } from '@mui/x-date-pickers/icons';
 
 const MASK_USER_INPUT_SYMBOL = '_';
 const ACCEPT_REGEX = /\d/gi;
-const FORMAT = 'YYYY/MM/DD';
+const FORMAT = 'YYYY.MM.DD';
 
 const staticDateWith2DigitTokens = dayjs('2019-11-21T11:30:00.000');
 const staticDateWith1DigitTokens = dayjs('2019-01-01T09:00:00.000');
@@ -87,21 +87,19 @@ function MaskedDateField(props: DatePickerFieldProps) {
       );
     }
 
-    const maskToUse = inferredFormatPatternWith1Digits; // "____/__/__"
+    const maskToUse = inferredFormatPatternWith1Digits;
 
-    // 마지막 입력값과 결과값을 저장할 변수
     let lastInput: string | null = null;
     let lastOutput: string | null = null;
 
     return function formatMaskedDate(valueToFormat: string) {
-      // 같은 입력이면 저장된 결과 반환
       if (valueToFormat === lastInput) {
         return lastOutput!;
       }
 
-      // 이미 포맷되었거나 빈 값이면 그대로 반환
       const isAlreadyFormatted = dayjs(valueToFormat, pickerContext.fieldFormat, true).isValid();
       if (isAlreadyFormatted || !valueToFormat) return valueToFormat;
+
 
       let outputCharIndex = 0;
 
@@ -168,11 +166,11 @@ function MaskedDateField(props: DatePickerFieldProps) {
       slotProps={{
         input: {
           ref: pickerContext.triggerRef,
-          endAdornment: (
+          startAdornment: (
             <InputAdornment position="end">
               <IconButton
                 onClick={() => pickerContext.setOpen((prev) => !prev)}
-                edge="end"
+                edge="start"
               >
                 <CalendarIcon />
               </IconButton>
