@@ -53,9 +53,6 @@ function MaskedDateField(props: DatePickerFieldProps) {
     }
   }, [pickerContext.fieldFormat, pickerContext.value]);
 
-  React.useEffect(() => {
-  }, [pickerContext.value])
-
   const { hasValidationError, getValidationErrorForNewValue } = useValidation({
     value: pickerContext.value,
     timezone: pickerContext.timezone,
@@ -129,14 +126,12 @@ function MaskedDateField(props: DatePickerFieldProps) {
             nextMaskChar &&
             nextMaskChar !== MASK_USER_INPUT_SYMBOL
           ) {
-            // when cursor at the end of mask part (e.g. month) prerender next symbol "21" -> "21/"
             return formattedChar ? formattedChar + nextMaskChar : '';
           }
           return formattedChar;
         })
         .join('');
 
-      // 마지막 입력값, 결과값 저장
       lastInput = valueToFormat;
       lastOutput = formatted;
 
