@@ -1,40 +1,27 @@
-import React, { useState } from 'react';
-import { TextField, type TextFieldProps, InputAdornment, IconButton } from '@mui/material';
+import {useState} from 'react';
+import {IconButton, InputAdornment, TextField, type TextFieldProps} from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 
 type ClearableTextFieldProps = TextFieldProps & {
-  buttonDisplay?: 'always' | 'hover' | 'focus' | 'input';
-  showButtonAfterInput?: boolean;
+  displayButton?: 'input' | 'hover' ;
 }
 
-function ClearableTextField({buttonDisplay = 'input', showButtonAfterInput = true, ...restProps}: ClearableTextFieldProps) {
+function ClearableTextField({displayButton = 'input', ...restProps}: ClearableTextFieldProps) {
   const [value, setValue] = useState('');
   const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
 
   const shouldShowClearButton = () => {
-    if (buttonDisplay === 'always') return true;
-    if (buttonDisplay === 'input') return !!value;
-    if (buttonDisplay === 'hover') return hovered;
-    if (buttonDisplay === 'focus') return focused;
+    if (displayButton === 'input') return !!value;
+    if (displayButton === 'hover') return hovered;
     return false;
   };
 
   const eventHandlerProps:Partial<TextFieldProps> = {};
 
-  if (buttonDisplay === 'focus') {
-    eventHandlerProps.onFocus = () => setFocused(true);
-    eventHandlerProps.onBlur = () => setFocused(false);
-  }
-  if (buttonDisplay === 'hover') {
+  if (displayButton === 'hover') {
     eventHandlerProps.onMouseEnter = () => setHovered(true);
     eventHandlerProps.onMouseLeave = () => setHovered(false);
   }
-
-  const handleMouseDownClearButton: React.MouseEventHandler<HTMLButtonElement> | undefined =
-    buttonDisplay === 'focus' ? (e) => e.preventDefault() : undefined;
-
-  const visible = showButtonAfterInput ? (value && shouldShowClearButton()) : shouldShowClearButton();
 
   return (
     <TextField
@@ -44,8 +31,8 @@ function ClearableTextField({buttonDisplay = 'input', showButtonAfterInput = tru
       slotProps={{
         input: {
           endAdornment: (
-            <InputAdornment position="end" style={{visibility: visible ? 'visible' : 'hidden'}}> 
-              <IconButton  edge="end" onClick={() => setValue('')} onMouseDown={handleMouseDownClearButton}>
+            <InputAdornment position="end" style={{visibility: !!value && shouldShowClearButton() ? 'visible' : 'hidden'}}>
+              <IconButton  edge="end" onClick={() => setValue('')} >
                 <ClearIcon />
               </IconButton>
             </InputAdornment>
